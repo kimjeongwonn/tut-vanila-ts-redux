@@ -1,51 +1,80 @@
-import { createStore, bindActionCreators } from 'redux';
+import { createStore, Reducer } from 'redux';
 
-interface CounterState {
-  value: number;
+const ADD_TODO = 'ADD_TODO' as const;
+const DELETE_TODO = 'DELETE_TODO' as const;
+
+const addTodo = (value: string) => {
+  return { type: ADD_TODO, value };
+};
+const deleteTodo = (value: number) => {
+  return { type: DELETE_TODO, value };
+};
+
+interface Todos {
+  readonly todo: string;
 }
 
-const INCREASE = 'COUNT/INCREASE' as const;
-const DECREASE = 'COUNT/DECREASE' as const;
-const increase = () => ({ type: INCREASE });
-const decrease = () => ({ type: DECREASE });
+type ActionType = ReturnType<typeof addTodo> | ReturnType<typeof deleteTodo>;
 
-type CounterAction = ReturnType<typeof increase> | ReturnType<typeof decrease>;
-
-const reducer = (state: CounterState = { value: 0 }, action: CounterAction) => {
-  console.log(state, action);
+const reducer: Reducer<Todos[], ActionType> = (
+  state: Todos[] = [],
+  action: ActionType
+) => {
   switch (action.type) {
-    case INCREASE:
-      return { value: ++state.value };
-    case DECREASE:
-      return { value: --state.value };
+    case ADD_TODO:
+      return [{ todo: action.value, id: Date.now() }, ...state];
+    case DELETE_TODO:
+      const newState: Todos[] = [...state];
+      newState.splice(action.value, 1);
+      return newState;
     default:
       return state;
   }
 };
 const store = createStore(reducer);
 
-const addState = () => {
-  store.dispatch(increase());
-};
-
-const minusState = () => {
-  store.dispatch(decrease());
-};
-
-document.getElementById('app').innerHTML = `
-<h1>Hello Parcel!</h1>
+document.getElementById('app')!.innerHTML = `
+<h1>todoList</h1>
 <div>
-  <button id="add">ADD</button>
-  <span>${store.getState().value}</span>
-  <button id="minus">MINUS</button>
+<form>
+<input type="text" placeholder="todo.."/>
+<input type="submit" value="ADD" />
+<ul></ul>
+</form>
 </div>
 `;
-const minusButton = document.querySelector('#minus');
-const addButton = document.querySelector('#add');
-minusButton.addEventListener('click', minusState);
-addButton.addEventListener('click', addState);
 
-store.subscribe(
-  () =>
-    (document.querySelector('span').innerHTML = String(store.getState().value))
-);
+const form = document.querySelector('form');
+const input = document.querySelector('input');
+const ul = document.querySelector('ul');
+
+const addTodoSubmit = e => {
+  e.preventDefault();
+  if (input!.value) store.dispatch(addTodo(input!.value));
+  input!.value = '';
+};
+
+const deleteTodoOnClick = e => {
+  const id = e.target.value;
+  store.dispatch(deleteTodo(id));
+  e.target.removeEventListener('click', deleteTodoOnClick);
+};
+
+const renderTodo = () => {
+  const todos: Todos[] = store.getState();
+  ul!.innerHTML = '';
+  todos.forEach((item, idx) => {
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    li.innerHTML = item.todo;
+    btn.innerText = 'X';
+    btn.value = String(idx);
+    btn.addEventListener('click', deleteTodoOnClick);
+    ul!.appendChild(li);
+    li!.appendChild(btn);
+  });
+};
+
+form!.addEventListener('submit', addTodoSubmit);
+
+store.subscribe(renderTodo);
